@@ -325,7 +325,7 @@ class SupervisedProbeTrainer(BaseProbeTrainer):
     ) -> float:
         """Run one epoch of training with progress tracking. Uses X_train for training."""
         model.train()
-        total_loss = 0
+        total_loss = 0.0
 
         # Create progress bar for batches
         batch_pbar = tqdm(
@@ -335,13 +335,9 @@ class SupervisedProbeTrainer(BaseProbeTrainer):
             leave=False,
         )
 
-        for (
-            batch_x_train,
-            batch_y,
-            _,
-        ) in batch_pbar:  # Ignore X_orig during training pass
+        for (batch_x_train, batch_y, _) in batch_pbar:
             optimizer.zero_grad()
-            batch_x_train = batch_x_train.to(self.config.device)
+            batch_x_train = batch_x_train.to(self.config.device).detach()
             batch_y = batch_y.to(self.config.device)
 
             # --- Adjust target shape/type for loss ---
@@ -354,16 +350,19 @@ class SupervisedProbeTrainer(BaseProbeTrainer):
                 batch_y = batch_y.float()  # Ensure Float type
             # -----------------------------------------
 
-            # Model forward pass uses the potentially standardized data
             outputs = model(batch_x_train)
             loss = loss_fn(outputs, batch_y)
 
             loss.backward()
             optimizer.step()
 
-            total_loss += loss.item()
-            batch_pbar.set_postfix({"Loss": f"{loss.item():.6f}"})
-
+            # detach BEFORE logging so no graph is kept alive
+            loss_value = loss.item()                   # item() → plain Python float
+            del loss, outputs                          # drop graph nodes immediately
+            
+            total_loss += loss_value
+            batch_pbar.set_postfix({"Loss": f"{loss_value:.6f}"})
+            del batch_x_train, batch_y          # free last refs *too*
         return total_loss / len(train_loader)
 
     def train(
@@ -583,9 +582,10 @@ class SupervisedProbeTrainer(BaseProbeTrainer):
 
                 # Model forward pass uses original (non-standardized) data
                 # Assumes the probe direction has been unscaled if needed after training
-                outputs = model(batch_x_orig)
-                loss = loss_fn(outputs, batch_y)
+                outputs = model(batch_x_orig)        # forward pass (no grad)
+                loss    = loss_fn(outputs, batch_y)
                 total_loss += loss.item()
+                del loss, outputs 
 
         return total_loss / len(val_loader)
 

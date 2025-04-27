@@ -31,6 +31,8 @@ class ProbePipelineConfig:
     hook_points: Optional[List[str]] = None
     activation_batch_size: int = 32
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
+    collector_cls:    type | None = None   # e.g. NNSightCollector
+    collector_config: Any  | None = None   # e.g. NNSightConfig(...)
 
 
 class ProbePipeline(Generic[C, P]):
@@ -54,21 +56,29 @@ class ProbePipeline(Generic[C, P]):
             self.config.probe_config.device = self.config.device
 
     def _collect_activations(self) -> Dict[str, ActivationStore]:
-        """Collect activations if needed."""
-        if not self.config.model_name or not self.config.hook_points:
-            raise ValueError(
-                "Model name and hook points required for activation collection"
-            )
+        """Instantiate whichever collector the user asked for."""
 
-        self.collector = TransformerLensCollector(
-            TransformerLensConfig(
-                model_name=self.config.model_name,
-                hook_points=self.config.hook_points,
-                batch_size=self.config.activation_batch_size,
-                device=self.config.device,
+        if self.config.collector_cls is not None:
+            # ❶ caller supplied a custom backend (e.g. NNSightCollector)
+            if self.config.collector_config is None:
+                raise ValueError(
+                    "collector_cls was provided but collector_config is None"
+                )
+            self.collector = self.config.collector_cls(self.config.collector_config)
+        else:
+            # ❷ fall back to the legacy Transformer-Lens collector
+            if not self.config.model_name or not self.config.hook_points:
+                raise ValueError(
+                    "model_name and hook_points are required for TransformerLensCollector"
+                )
+            self.collector = TransformerLensCollector(
+                TransformerLensConfig(
+                    model_name=self.config.model_name,
+                    hook_points=self.config.hook_points,
+                    batch_size=self.config.activation_batch_size,
+                    device=self.config.device,
+                )
             )
-        )
-
         return self.collector.collect(self.config.dataset)
 
     def _load_or_collect_activations(self) -> Dict[str, ActivationStore]:
