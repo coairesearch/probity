@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import math
 
 from probity.collection.activation_store import ActivationStore
-from probity.probes.linear_probe import (
+from probity.probes import (
     BaseProbe,
     LogisticProbe,
     MultiClassLogisticProbe,
