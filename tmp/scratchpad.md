@@ -53,3 +53,18 @@
    - Proxy objects (need .value) in batch processing
    - Direct tuples in some single inference cases
 3. Hook point format changed from "blocks.12.hook_resid_post" to "transformer.h.12.output"
+
+#### Step 5: Documentation and Cleanup
+- ✅ Created docs/usage.md with migration guide and examples
+- ✅ Fixed test imports and hook point formats
+- ✅ Added backward compatibility aliases
+- ✅ All core functionality working with nnsight
+
+### Summary
+Successfully replaced transformer_lens with nnsight throughout the probity codebase:
+- Updated dependencies
+- Migrated core implementation (collectors.py and inference.py)
+- Removed transformer_lens imports from tutorials
+- Updated tests to use new hook point format
+- Created comprehensive documentation
+- Maintained backward compatibility where possible
