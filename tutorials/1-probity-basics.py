@@ -30,7 +30,6 @@ from probity.pipeline.pipeline import ProbePipeline, ProbePipelineConfig
 
 # Third-party imports
 from transformers import AutoTokenizer
-from transformer_lens import HookedTransformer
 from neuronpedia.np_vector import NPVector
 
 # Set torch device consistently

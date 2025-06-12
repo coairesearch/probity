@@ -26,7 +26,6 @@ from probity.probes import LogisticProbe, LogisticProbeConfig
 from probity.training.trainer import SupervisedProbeTrainer, SupervisedTrainerConfig
 from probity.probes.inference import ProbeInference
 from probity.pipeline.pipeline import ProbePipeline, ProbePipelineConfig
-from transformer_lens import HookedTransformer
 
 # Set torch device consistently
 if torch.backends.mps.is_available():

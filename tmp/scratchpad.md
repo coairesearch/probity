@@ -1,0 +1,42 @@
+# Development Scratchpad: Replace transformer_lens with nnsight
+
+## 2025-12-06: Project Started
+
+### Initial Analysis
+- Identified transformer_lens usage in:
+  - pyproject.toml (dependency)
+  - probity/collection/collectors.py (core implementation)
+  - probity/probes/inference.py (inference implementation)
+  - 3 tutorial files (imports only)
+
+### Plan
+1. Update dependencies
+2. Replace core implementations
+3. Update tutorials
+4. Test thoroughly
+
+### Progress Log
+
+#### Step 1: Update Dependencies
+- ✅ Updated pyproject.toml: replaced transformer_lens with nnsight
+- ✅ Committed changes
+
+#### Step 2: Replace Core Implementation  
+- ✅ Updated probity/collection/collectors.py:
+  - Renamed TransformerLensCollector to NNsightCollector
+  - Renamed TransformerLensConfig to NNsightConfig
+  - Replaced HookedTransformer with LanguageModel from nnsight
+  - Updated collect() method to use nnsight's trace functionality
+  - Added backward compatibility aliases
+  - Updated hook point format from "blocks.12.hook_resid_post" to "transformer.h.12.output"
+  
+- ✅ Updated probity/probes/inference.py:
+  - Replaced HookedTransformer with LanguageModel
+  - Updated get_activations() to use nnsight's trace context
+  - Added _get_module_from_hook_point() helper method
+
+#### Step 3: Update Tutorials
+- ✅ Removed transformer_lens imports from:
+  - tutorials/1-probity-basics.py
+  - tutorials/2-dataset-creation.py  
+  - tutorials/4-multiclass-probe.py
