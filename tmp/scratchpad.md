@@ -40,3 +40,16 @@
   - tutorials/1-probity-basics.py
   - tutorials/2-dataset-creation.py  
   - tutorials/4-multiclass-probe.py
+
+#### Step 4: Testing and Debugging
+- ✅ Created test script to verify nnsight integration
+- ✅ Fixed issue with accessing saved activations (need to use .value on proxy objects)
+- ✅ Fixed difference between batch collection (returns proxy) and single inference (returns tuple)
+- ✅ All tests passing with toy model (gpt2)
+
+#### Key Learnings:
+1. NNsight uses proxy objects inside trace context
+2. After trace execution, saved values can be:
+   - Proxy objects (need .value) in batch processing
+   - Direct tuples in some single inference cases
+3. Hook point format changed from "blocks.12.hook_resid_post" to "transformer.h.12.output"

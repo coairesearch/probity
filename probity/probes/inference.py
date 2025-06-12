@@ -53,14 +53,21 @@ class ProbeInference:
 
         # Get activations using nnsight trace
         with torch.no_grad():
-            with self.model.trace(input_ids):
+            with self.model.trace(input_ids) as tracer:
                 # Navigate to the hook point and save the output
                 module = self._get_module_from_hook_point(self.hook_point)
                 saved_activation = module.save()
             
-            # Extract the activation value
-            activation = saved_activation.value
-            if isinstance(activation, tuple):
+            # Extract the activation value after trace execution
+            # Handle both proxy and direct tuple cases
+            if hasattr(saved_activation, 'value'):
+                # It's a proxy, access the value
+                activation = saved_activation.value
+            else:
+                # It's already the actual value
+                activation = saved_activation
+                
+            if isinstance(activation, tuple) and len(activation) > 0:
                 # Take the first element if it's a tuple (hidden states)
                 activation = activation[0]
                 

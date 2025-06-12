@@ -66,21 +66,23 @@ class NNsightCollector:
             input_ids = batch["input_ids"].to(self.config.device)
 
             # Run model with tracing to collect activations
-            with self.model.trace(input_ids):
+            saved_activations = {}
+            with self.model.trace(input_ids) as tracer:
                 # Save activations for each hook point
-                saved_activations = {}
                 for hook in self.config.hook_points:
                     # Navigate to the hook point and save output
                     module = self._get_module_from_hook_point(hook)
                     saved_activations[hook] = module.save()
 
+            # After trace execution, we can access the actual values
             # Store activations for each hook point
             for hook in self.config.hook_points:
                 if hook not in all_activations:
                     all_activations[hook] = []
-                # Get the saved tensor and move to CPU
-                activation = saved_activations[hook].value
-                if isinstance(activation, tuple):
+                # Get the saved value from the proxy
+                proxy = saved_activations[hook]
+                activation = proxy.value  # Access the actual tensor value
+                if isinstance(activation, tuple) and len(activation) > 0:
                     # Take the first element if it's a tuple (hidden states)
                     activation = activation[0]
                 all_activations[hook].append(activation.cpu())
