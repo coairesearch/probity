@@ -33,39 +33,45 @@ export const DatasetBuilder: React.FC = () => {
   // Generate preview examples
   const generatePreview = () => {
     const examples: string[] = [];
-    const classes = Object.keys(variables[0]?.values || {});
+    
+    if (variables.length === 0) return;
+    
+    // For class-bound variables, generate examples for each class
+    const classes = ['positive', 'negative'];
     
     classes.forEach(cls => {
-      variables[0]?.values[cls]?.forEach(adj => {
-        variables[1]?.values[cls]?.forEach(verb => {
-          let example = template;
-          example = example.replace('{ADJ}', adj);
-          example = example.replace('{VERB}', verb);
-          examples.push(example);
+      // Generate a few examples for each class
+      for (let i = 0; i < 3; i++) {
+        let example = template;
+        
+        variables.forEach(variable => {
+          const values = variable.classBound && variable.values[cls] 
+            ? variable.values[cls] 
+            : Object.values(variable.values).flat();
+          
+          const randomValue = values[Math.floor(Math.random() * values.length)];
+          example = example.replace(new RegExp(`{${variable.name}}`, 'g'), randomValue);
         });
-      });
+        
+        examples.push(example);
+      }
     });
     
     setPreviewExamples(examples);
   };
   
-  React.useEffect(() => {
-    generatePreview();
-  }, [template, variables]);
-  
   const addVariable = () => {
-    const newVar: Variable = {
-      name: `VAR${variables.length + 1}`,
-      values: { class1: ['value1'] },
+    setVariables([...variables, {
+      name: 'VAR',
+      values: { default: ['value'] },
       classBound: false
-    };
-    setVariables([...variables, newVar]);
+    }]);
   };
   
-  const updateVariable = (index: number, updates: Partial<Variable>) => {
-    const newVars = [...variables];
-    newVars[index] = { ...newVars[index], ...updates };
-    setVariables(newVars);
+  const updateVariable = (index: number, updated: Partial<Variable>) => {
+    const newVariables = [...variables];
+    newVariables[index] = { ...newVariables[index], ...updated };
+    setVariables(newVariables);
   };
   
   const removeVariable = (index: number) => {
@@ -81,10 +87,10 @@ export const DatasetBuilder: React.FC = () => {
         template,
         variables
       }],
-      examples: previewExamples.map((text, i) => ({
+      examples: previewExamples.map((text, index) => ({
         text,
-        label: i < previewExamples.length / 2 ? 1 : 0,
-        label_text: i < previewExamples.length / 2 ? 'positive' : 'negative'
+        label: index < previewExamples.length / 2 ? 1 : 0,
+        label_text: index < previewExamples.length / 2 ? 'positive' : 'negative'
       }))
     };
     
@@ -129,160 +135,173 @@ export const DatasetBuilder: React.FC = () => {
 
         <div className="p-6">
           {activeTab === 'create' ? (
-            <>
-        
-        {/* Dataset Name */}
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Dataset Name
-          </label>
-          <input
-            type="text"
-            value={datasetName}
-            onChange={(e) => setDatasetName(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-          />
-        </div>
-        
-        {/* Template Editor */}
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Template
-          </label>
-          <textarea
-            value={template}
-            onChange={(e) => setTemplate(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-            rows={3}
-            placeholder="Enter your template with {VARIABLE} placeholders..."
-          />
-          <p className="mt-1 text-sm text-gray-500">
-            Use curly braces to define variables, e.g., {'{VARIABLE}'}
-          </p>
-        </div>
-        
-        {/* Variables */}
-        <div className="mb-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-medium text-gray-900">Variables</h3>
-            <button
-              onClick={addVariable}
-              className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
-            >
-              <Plus className="mr-1 h-4 w-4" />
-              Add Variable
-            </button>
-          </div>
-          
-          <div className="space-y-4">
-            {variables.map((variable, index) => (
-              <div key={index} className="border border-gray-200 rounded-lg p-4">
-                <div className="flex justify-between items-start mb-3">
-                  <input
-                    type="text"
-                    value={variable.name}
-                    onChange={(e) => updateVariable(index, { name: e.target.value })}
-                    className="text-lg font-medium px-2 py-1 border border-gray-300 rounded"
-                    placeholder="Variable name"
-                  />
+            <div className="space-y-6">
+              {/* Dataset Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Dataset Name
+                </label>
+                <input
+                  type="text"
+                  value={datasetName}
+                  onChange={(e) => setDatasetName(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+              
+              {/* Template Editor */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Template
+                </label>
+                <textarea
+                  value={template}
+                  onChange={(e) => setTemplate(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  rows={3}
+                  placeholder="Enter your template with {VARIABLE} placeholders..."
+                />
+                <p className="mt-1 text-sm text-gray-500">
+                  Use curly braces to define variables, e.g., {'{VARIABLE}'}
+                </p>
+              </div>
+              
+              {/* Variables */}
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-medium text-gray-900">Variables</h3>
                   <button
-                    onClick={() => removeVariable(index)}
-                    className="text-red-600 hover:text-red-800"
+                    onClick={addVariable}
+                    className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
                   >
-                    <Trash2 className="h-5 w-5" />
+                    <Plus className="mr-1 h-4 w-4" />
+                    Add Variable
                   </button>
                 </div>
                 
-                <div className="space-y-2">
-                  {Object.entries(variable.values).map(([cls, vals]) => (
-                    <div key={cls} className="flex items-center space-x-2">
-                      <input
-                        type="text"
-                        value={cls}
-                        className="w-24 px-2 py-1 border border-gray-300 rounded text-sm"
-                        placeholder="Class"
-                        readOnly
-                      />
-                      <input
-                        type="text"
-                        value={vals.join(', ')}
-                        onChange={(e) => {
-                          const newValues = { ...variable.values };
-                          newValues[cls] = e.target.value.split(',').map(v => v.trim());
-                          updateVariable(index, { values: newValues });
-                        }}
-                        className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
-                        placeholder="Values (comma-separated)"
-                      />
+                <div className="space-y-4">
+                  {variables.map((variable, index) => (
+                    <div key={index} className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex justify-between items-start mb-3">
+                        <input
+                          type="text"
+                          value={variable.name}
+                          onChange={(e) => updateVariable(index, { name: e.target.value })}
+                          className="px-2 py-1 border border-gray-300 rounded text-sm"
+                          placeholder="Variable name"
+                        />
+                        <button
+                          onClick={() => removeVariable(index)}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                      
+                      <div className="mb-3">
+                        <label className="flex items-center text-sm">
+                          <input
+                            type="checkbox"
+                            checked={variable.classBound || false}
+                            onChange={(e) => updateVariable(index, { classBound: e.target.checked })}
+                            className="mr-2"
+                          />
+                          Class-bound variable
+                        </label>
+                      </div>
+                      
+                      {variable.classBound ? (
+                        <div className="space-y-2">
+                          {Object.entries(variable.values).map(([cls, vals]) => (
+                            <div key={cls}>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                {cls} values:
+                              </label>
+                              <input
+                                type="text"
+                                value={(vals as string[]).join(', ')}
+                                onChange={(e) => {
+                                  const newValues = { ...variable.values };
+                                  newValues[cls] = e.target.value.split(',').map(v => v.trim());
+                                  updateVariable(index, { values: newValues });
+                                }}
+                                className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                placeholder="Enter comma-separated values"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Values:
+                          </label>
+                          <input
+                            type="text"
+                            value={Object.values(variable.values).flat().join(', ')}
+                            onChange={(e) => {
+                              updateVariable(index, {
+                                values: { default: e.target.value.split(',').map(v => v.trim()) }
+                              });
+                            }}
+                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                            placeholder="Enter comma-separated values"
+                          />
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
+              </div>
+              
+              {/* Actions */}
+              <div className="flex justify-between items-center">
+                <button
+                  onClick={generatePreview}
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                >
+                  <Eye className="mr-2 h-4 w-4" />
+                  Generate Preview
+                </button>
                 
-                <div className="mt-3 flex items-center">
-                  <input
-                    type="checkbox"
-                    id={`class-bound-${index}`}
-                    checked={variable.classBound}
-                    onChange={(e) => updateVariable(index, { classBound: e.target.checked })}
-                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                  />
-                  <label htmlFor={`class-bound-${index}`} className="ml-2 text-sm text-gray-700">
-                    Class-bound variable
-                  </label>
+                <button
+                  onClick={saveDataset}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+                >
+                  <Save className="mr-2 h-4 w-4" />
+                  Save Dataset
+                </button>
+              </div>
+              
+              {/* Preview */}
+              {previewExamples.length > 0 && (
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-medium text-gray-900">Preview</h3>
+                    <span className="text-sm text-gray-500">
+                      {previewExamples.length} examples generated
+                    </span>
+                  </div>
+                  
+                  <div className="max-h-64 overflow-y-auto">
+                    <div className="space-y-2">
+                      {previewExamples.map((example, index) => (
+                        <div key={index} className="p-3 bg-white rounded-lg text-sm">
+                          <span className="text-gray-700">{example}</span>
+                          <span className={`ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                            index < previewExamples.length / 2 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {index < previewExamples.length / 2 ? 'positive' : 'negative'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
-        
-        {/* Actions */}
-        <div className="flex justify-between">
-          <div className="space-x-3">
-            <button className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-              <Upload className="mr-2 h-4 w-4" />
-              Import CSV
-            </button>
-            <button className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-              <Download className="mr-2 h-4 w-4" />
-              Export
-            </button>
-          </div>
-          <button
-            onClick={saveDataset}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
-          >
-            <Save className="mr-2 h-4 w-4" />
-            Save Dataset
-          </button>
-        </div>
-      </div>
-      
-      {/* Preview */}
-      <div className="bg-white shadow rounded-lg p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium text-gray-900">Preview</h3>
-          <span className="text-sm text-gray-500">
-            {previewExamples.length} examples will be generated
-          </span>
-        </div>
-        
-        <div className="max-h-64 overflow-y-auto">
-          <div className="space-y-2">
-            {previewExamples.map((example, index) => (
-              <div key={index} className="p-3 bg-gray-50 rounded-lg text-sm">
-                <span className="text-gray-700">{example}</span>
-                <span className={`ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                  index < previewExamples.length / 2 
-                    ? 'bg-green-100 text-green-800' 
-                    : 'bg-red-100 text-red-800'
-                }`}>
-                  {index < previewExamples.length / 2 ? 'positive' : 'negative'}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-            </>
+              )}
+            </div>
           ) : (
             <DataImportExport />
           )}

@@ -69,6 +69,13 @@ export const ProbeWeightsViz: React.FC<Props> = ({ experimentId, probeType }) =>
 
   const chartData = prepareData();
 
+  // Custom bar shape to handle colors based on value
+  const CustomBar = (props: any) => {
+    const { fill, x, y, width, height, payload } = props;
+    const barFill = payload.weight > 0 ? '#10b981' : '#ef4444';
+    return <rect x={x} y={y} width={width} height={height} fill={barFill} />;
+  };
+
   const exportData = () => {
     const csv = [
       ['Feature', 'Weight', 'Importance'],
@@ -210,8 +217,9 @@ export const ProbeWeightsViz: React.FC<Props> = ({ experimentId, probeType }) =>
               <Legend />
               <Bar 
                 dataKey="weight" 
-                fill={(entry: any) => entry.weight > 0 ? '#10b981' : '#ef4444'}
+                fill="#8884d8"
                 name="Weight"
+                shape={CustomBar}
               />
               <Bar 
                 dataKey="importance" 

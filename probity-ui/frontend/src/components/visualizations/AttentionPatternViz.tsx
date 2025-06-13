@@ -99,7 +99,7 @@ export const AttentionPatternViz: React.FC<Props> = ({ experimentId, selectedLay
 
         // Highlight row and column
         d3.selectAll('.cell')
-          .style('opacity', cell => 
+          .style('opacity', (cell: any) => 
             cell.row === d.row || cell.col === d.col ? 1 : 0.3
           );
       })
