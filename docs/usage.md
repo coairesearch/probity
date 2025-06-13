@@ -3,6 +3,10 @@
 ## Overview
 Probity is a library for probing neural networks, now using nnsight for model introspection instead of transformer_lens.
 
+> **📚 Quick Links:**
+> - [Testing Guide](testing.md) - How to test the library and verify nnsight integration
+> - [Migration Guide](migration_guide.md) - Quick reference for migrating from transformer_lens
+
 ## Key Changes from transformer_lens to nnsight
 
 ### Hook Point Format
@@ -153,6 +157,23 @@ probe, history = pipeline.run()
 
 print(f"Training completed with final accuracy: {history['val_accuracy'][-1]:.3f}")
 ```
+
+## Testing Your Setup
+
+To verify everything is working correctly:
+
+```bash
+# Quick test (< 30 seconds)
+python tests/integration/test_nnsight_simple.py
+
+# Comprehensive test (all features)
+python tests/integration/test_comprehensive_nnsight.py
+
+# Test backward compatibility
+python tests/integration/test_backward_compatibility.py
+```
+
+See the [Testing Guide](testing.md) for detailed testing instructions.
 
 ## Troubleshooting
 
