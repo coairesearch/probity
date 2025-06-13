@@ -506,11 +506,11 @@ print(
 model_name = "google/gemma-2-2b"
 
 # IMPROVEMENT: Test multiple hook points (layers) to find the best one
-hook_points = [f"blocks.{layer}.hook_resid_pre" for layer in [8, 16, 24]]
+hook_points = [f"transformer.h.{layer}.output" for layer in [8, 16, 24]]  # Updated to nnsight format
 
 # Get model's hidden dimension dynamically
-model = HookedTransformer.from_pretrained(model_name, device=device)
-hidden_size = model.cfg.d_model
+# For Gemma-2-2b, the hidden size is 2304
+hidden_size = 2304  # Gemma-2-2b hidden dimension
 print(f"Model {model_name} has hidden dimension: {hidden_size}")
 
 # Common trainer configuration
@@ -722,7 +722,7 @@ print(f"Best layer for perspective classification: {best_perspective_layer}")
 
 # %%
 # Inference with best Question Type Probe
-best_hook_point = f"blocks.{best_question_layer}.hook_resid_pre"
+best_hook_point = f"transformer.h.{best_question_layer}.output"  # Updated to nnsight format
 question_inference = ProbeInference(
     model_name=model_name,
     hook_point=best_hook_point,
@@ -758,7 +758,7 @@ for i, example in enumerate(test_questions):
 
 # %%
 # Inference with best Code Detection Probe
-best_hook_point = f"blocks.{best_code_layer}.hook_resid_pre"
+best_hook_point = f"transformer.h.{best_code_layer}.output"  # Updated to nnsight format
 code_inference = ProbeInference(
     model_name=model_name,
     hook_point=best_hook_point,
@@ -794,7 +794,7 @@ for i, example in enumerate(test_code_examples):
 
 # %%
 # Inference with best Perspective Probe
-best_hook_point = f"blocks.{best_perspective_layer}.hook_resid_pre"
+best_hook_point = f"transformer.h.{best_perspective_layer}.output"  # Updated to nnsight format
 perspective_inference = ProbeInference(
     model_name=model_name,
     hook_point=best_hook_point,

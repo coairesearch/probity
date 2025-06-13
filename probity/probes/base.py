@@ -476,7 +476,9 @@ class BaseProbe(ABC, nn.Module, Generic[T]):
         try:
             config_module = importlib.import_module(".config", package="probity.probes")
             config_cls = getattr(config_module, config_cls_name)
-            if issubclass(config_cls, ProbeConfig):
+            # Import ProbeConfig at runtime to check
+            from .config import ProbeConfig as _ProbeConfig
+            if issubclass(config_cls, _ProbeConfig):
                 return config_cls
         except (ImportError, AttributeError):
             pass  # Continue trying other methods

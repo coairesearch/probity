@@ -426,12 +426,12 @@ else:
 # %%
 # Configure model and hook point
 # Using a mid-layer residual stream hook point
-hook_point = "blocks.1.hook_resid_pre"
+hook_point = "transformer.h.1.output"  # Updated to nnsight format
 layer = 1
 
 # Get model's hidden dimension
-model = HookedTransformer.from_pretrained(model_name, device=device)
-hidden_size = model.cfg.d_model
+# For GPT-2, the hidden size is 768
+hidden_size = 768  # GPT-2 hidden dimension
 print(f"\nModel {model_name} hidden dimension: {hidden_size}")
 
 # Configure the MultiClassLogisticProbe
