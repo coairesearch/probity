@@ -273,8 +273,11 @@ def test_probe_types(activation_store, results: TestResults):
         trainer = SupervisedProbeTrainer(trainer_config)
         # Create DataLoaders (trainer expects X, y, X_orig)
         from torch.utils.data import TensorDataset, DataLoader
-        train_dataset = TensorDataset(X_train, y_train, X_train.clone())  # X_orig is same as X for our test
-        val_dataset = TensorDataset(X_val, y_val, X_val.clone())
+        # Ensure y has correct shape for BCEWithLogitsLoss
+        y_train_reshaped = y_train.unsqueeze(1) if y_train.dim() == 1 else y_train
+        y_val_reshaped = y_val.unsqueeze(1) if y_val.dim() == 1 else y_val
+        train_dataset = TensorDataset(X_train, y_train_reshaped, X_train.clone())  # X_orig is same as X for our test
+        val_dataset = TensorDataset(X_val, y_val_reshaped, X_val.clone())
         train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
         val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
         
@@ -348,7 +351,13 @@ def test_probe_types(activation_store, results: TestResults):
         )
         probe = MultiClassLogisticProbe(probe_config)
         
-        trainer = SupervisedProbeTrainer(trainer_config)
+        # Create fresh trainer config for multi-class
+        mc_trainer_config = SupervisedTrainerConfig(
+            learning_rate=0.001,
+            num_epochs=5,
+            device=device,
+        )
+        trainer = SupervisedProbeTrainer(mc_trainer_config)
         # Create DataLoaders (trainer expects X, y, X_orig)
         train_dataset = TensorDataset(X_train, y_train_multi, X_train.clone())
         val_dataset = TensorDataset(X_val, y_val_multi, X_val.clone())
@@ -378,8 +387,8 @@ def test_probe_types(activation_store, results: TestResults):
         )
         probe = SklearnLogisticProbe(probe_config)
         
-        # Sklearn probe has its own fit method (expects torch tensors)
-        probe.fit(X_train, y_train)
+        # Sklearn probe has its own fit method (expects torch tensors without gradients)
+        probe.fit(X_train.detach(), y_train.detach())
         
         # Test predictions using forward method
         with torch.no_grad():

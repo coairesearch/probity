@@ -85,7 +85,7 @@ class NNsightCollector:
                 if isinstance(activation, tuple) and len(activation) > 0:
                     # Take the first element if it's a tuple (hidden states)
                     activation = activation[0]
-                all_activations[hook].append(activation.cpu())
+                all_activations[hook].append(activation.detach().cpu())
 
         # Create ActivationStore objects
         return {
