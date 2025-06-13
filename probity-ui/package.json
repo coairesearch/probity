@@ -1,0 +1,14 @@
+{
+  "name": "probity-ui",
+  "version": "1.0.0",
+  "description": "Visual interface for neural network probing",
+  "scripts": {
+    "frontend": "cd frontend && npm start",
+    "backend": "cd backend && python main.py",
+    "dev": "concurrently \"npm run frontend\" \"npm run backend\"",
+    "install-all": "cd frontend && npm install"
+  },
+  "devDependencies": {
+    "concurrently": "^7.6.0"
+  }
+}
