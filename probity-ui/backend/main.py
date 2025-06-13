@@ -34,6 +34,8 @@ app.add_middleware(
 # Store active experiments
 active_experiments = {}
 active_websockets = {}
+workflows = {}
+datasets = {}
 
 # Models
 class DatasetCreate(BaseModel):
@@ -55,6 +57,22 @@ class ModelInfo(BaseModel):
     layers: int
     hidden_size: int
     hook_points: List[str]
+
+class WorkflowNode(BaseModel):
+    id: str
+    type: str  # 'dataset', 'model', 'probe', 'analysis'
+    position: Dict[str, float]
+    data: Optional[Dict[str, Any]] = {}
+    connections: List[str] = []
+
+class WorkflowCreate(BaseModel):
+    name: str
+    nodes: List[WorkflowNode]
+    connections: List[Dict[str, str]]
+
+class ProbeComparison(BaseModel):
+    experiment_ids: List[str]
+    metrics: List[str] = ["accuracy", "f1_score", "precision", "recall"]
 
 # Available models
 AVAILABLE_MODELS = {
@@ -101,14 +119,20 @@ async def create_dataset(dataset: DatasetCreate):
             class_key=var.get('classKey')
         )
     
-    # Create dataset (in real app, would save to database)
-    return {
-        "id": f"dataset_{len(active_experiments)}",
+    # Create dataset and store it
+    dataset_id = f"dataset_{len(datasets)}"
+    dataset_obj = {
+        "id": dataset_id,
         "name": dataset.name,
         "template": dataset.template,
         "variables": dataset.variables,
-        "example_count": len(dataset.variables) * 4  # Simplified calculation
+        "example_count": len(dataset.variables) * 4,  # Simplified calculation
+        "createdAt": "2024-01-15T10:00:00Z"
     }
+    
+    datasets[dataset_id] = dataset_obj
+    
+    return dataset_obj
 
 @app.post("/api/datasets/{dataset_id}/preview")
 async def preview_dataset(dataset_id: str, limit: int = 10):
@@ -212,19 +236,38 @@ async def websocket_endpoint(websocket: WebSocket, experiment_id: str):
     except:
         del active_websockets[experiment_id]
 
+class InferenceRequest(BaseModel):
+    text: str
+    experiment_id: str
+
 @app.post("/api/inference")
-async def run_inference(text: str, experiment_id: str):
+async def run_inference(request: InferenceRequest):
     # In real app, would load trained probe and run inference
     # For now, return mock results
-    tokens = text.split()
-    predictions = [0.1, 0.2, 0.1, 0.9, 0.95, 0.1][:len(tokens)]
+    tokens = request.text.split()
+    predictions = []
+    
+    # Generate more realistic predictions
+    for token in tokens:
+        # Positive words get high scores
+        if token.lower() in ['amazing', 'wonderful', 'fantastic', 'loved', 'enjoyed', 'great', 'excellent']:
+            predictions.append(0.8 + np.random.rand() * 0.2)
+        # Negative words get low scores
+        elif token.lower() in ['terrible', 'awful', 'horrible', 'hated', 'disliked', 'bad', 'worst']:
+            predictions.append(0.1 + np.random.rand() * 0.2)
+        # Neutral words
+        else:
+            predictions.append(0.4 + np.random.rand() * 0.2)
+    
+    # Calculate overall prediction
+    avg_prediction = np.mean(predictions)
     
     return {
-        "text": text,
+        "text": request.text,
         "tokens": tokens,
         "predictions": predictions,
-        "overall_prediction": "positive",
-        "confidence": 0.968
+        "overall_prediction": "positive" if avg_prediction > 0.5 else "negative",
+        "confidence": abs(avg_prediction - 0.5) * 2
     }
 
 @app.get("/api/experiments/{experiment_id}/attention")
@@ -300,6 +343,238 @@ async def get_probe_weights(experiment_id: str):
         "layerName": "Layer 11",
         "accuracy": 0.942
     }
+
+# Workflow endpoints
+@app.post("/api/workflows/create")
+async def create_workflow(workflow: WorkflowCreate):
+    """Create a new workflow"""
+    workflow_id = f"workflow_{len(workflows)}"
+    workflows[workflow_id] = {
+        "id": workflow_id,
+        "name": workflow.name,
+        "nodes": [node.dict() for node in workflow.nodes],
+        "connections": workflow.connections,
+        "created_at": "2024-01-15T10:00:00Z",
+        "status": "draft"
+    }
+    return {"id": workflow_id, "status": "created"}
+
+@app.get("/api/workflows")
+async def list_workflows():
+    """List all workflows"""
+    return list(workflows.values())
+
+@app.get("/api/workflows/{workflow_id}")
+async def get_workflow(workflow_id: str):
+    """Get a specific workflow"""
+    if workflow_id not in workflows:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    return workflows[workflow_id]
+
+@app.post("/api/workflows/{workflow_id}/run")
+async def run_workflow(workflow_id: str):
+    """Execute a workflow"""
+    if workflow_id not in workflows:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    
+    workflow = workflows[workflow_id]
+    workflow["status"] = "running"
+    
+    # Start workflow execution in background
+    asyncio.create_task(execute_workflow_task(workflow_id))
+    
+    return {"status": "started", "workflow_id": workflow_id}
+
+async def execute_workflow_task(workflow_id: str):
+    """Background task to execute workflow"""
+    workflow = workflows[workflow_id]
+    
+    try:
+        # Simulate workflow execution
+        for i, node in enumerate(workflow["nodes"]):
+            # Update node status
+            node["status"] = "running"
+            await asyncio.sleep(2)  # Simulate processing
+            node["status"] = "completed"
+            
+            # Send updates via websocket if needed
+            if workflow_id in active_websockets:
+                ws = active_websockets[workflow_id]
+                await ws.send_json({
+                    "type": "node_update",
+                    "node_id": node["id"],
+                    "status": "completed"
+                })
+        
+        workflow["status"] = "completed"
+        workflow["completed_at"] = "2024-01-15T10:05:00Z"
+        
+    except Exception as e:
+        workflow["status"] = "failed"
+        workflow["error"] = str(e)
+
+# Probe comparison endpoints
+@app.post("/api/comparison/compare")
+async def compare_probes(comparison: ProbeComparison):
+    """Compare multiple probes"""
+    results = []
+    
+    # Generate mock comparison data for each experiment
+    for exp_id in comparison.experiment_ids:
+        # Generate realistic probe performance data
+        base_accuracy = 0.85 + np.random.rand() * 0.15
+        
+        result = {
+            "id": exp_id,
+            "name": f"Probe {exp_id}",
+            "accuracy": base_accuracy,
+            "f1_score": base_accuracy - 0.01 + np.random.rand() * 0.02,
+            "precision": base_accuracy + 0.02 + np.random.rand() * 0.02,
+            "recall": base_accuracy - 0.02 + np.random.rand() * 0.02,
+            "loss": 0.2 - base_accuracy * 0.15 + np.random.rand() * 0.05,
+            "train_time": 30 + np.random.rand() * 100,
+            "model_size": 0.5 + np.random.rand() * 5,
+            "layer_performance": [
+                {
+                    "layer": f"L{i}",
+                    "accuracy": 0.5 + (i / 12) * 0.4 + np.random.rand() * 0.1
+                }
+                for i in range(12)
+            ]
+        }
+        results.append(result)
+    
+    return {
+        "experiment_ids": comparison.experiment_ids,
+        "results": results,
+        "metrics": comparison.metrics
+    }
+
+@app.get("/api/comparison/experiments")
+async def get_comparison_experiments():
+    """Get all experiments available for comparison"""
+    # Return completed experiments with probe results
+    completed_experiments = []
+    
+    # Add some mock completed experiments
+    for i in range(4):
+        probe_types = ["linear", "logistic", "mlp", "directional"]
+        completed_experiments.append({
+            "id": f"probe{i+1}",
+            "name": f"{probe_types[i].title()} Probe L11",
+            "accuracy": 0.9 + np.random.rand() * 0.08,
+            "f1Score": 0.89 + np.random.rand() * 0.08,
+            "precision": 0.91 + np.random.rand() * 0.07,
+            "recall": 0.88 + np.random.rand() * 0.09,
+            "trainTime": 30 + i * 30 + np.random.randint(0, 20),
+            "modelSize": 0.8 + i * 1.5,
+            "status": "completed",
+            "probe_type": probe_types[i]
+        })
+    
+    # Add any real completed experiments
+    for exp_id, exp in active_experiments.items():
+        if exp.get("status") == "completed" and exp.get("results"):
+            completed_experiments.append({
+                "id": exp_id,
+                "name": exp["name"],
+                "accuracy": exp["results"].get("final_accuracy", 0.9),
+                "status": "completed",
+                "probe_type": exp.get("probe_type", "logistic")
+            })
+    
+    return completed_experiments
+
+# Dataset management endpoints
+@app.get("/api/datasets")
+async def list_datasets():
+    """List all datasets"""
+    return list(datasets.values())
+
+@app.get("/api/datasets/{dataset_id}")
+async def get_dataset(dataset_id: str):
+    """Get a specific dataset"""
+    if dataset_id not in datasets:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    return datasets[dataset_id]
+
+@app.post("/api/datasets/{dataset_id}/export")
+async def export_dataset(dataset_id: str, format: str = "json"):
+    """Export dataset in specified format"""
+    if dataset_id not in datasets:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    
+    dataset = datasets[dataset_id]
+    
+    if format == "json":
+        return dataset
+    elif format == "csv":
+        # Convert to CSV format
+        import csv
+        import io
+        
+        output = io.StringIO()
+        writer = csv.DictWriter(output, fieldnames=["text", "label", "label_text"])
+        writer.writeheader()
+        
+        # Mock examples
+        examples = [
+            {"text": "Example 1", "label": 1, "label_text": "positive"},
+            {"text": "Example 2", "label": 0, "label_text": "negative"}
+        ]
+        writer.writerows(examples)
+        
+        return {"format": "csv", "data": output.getvalue()}
+    else:
+        raise HTTPException(status_code=400, detail="Unsupported format")
+
+@app.post("/api/datasets/import")
+async def import_dataset(file_data: Dict[str, Any]):
+    """Import dataset from file"""
+    file_type = file_data.get("type", "json")
+    content = file_data.get("content", "")
+    name = file_data.get("name", "Imported Dataset")
+    
+    dataset_id = f"dataset_{len(datasets)}"
+    
+    if file_type == "json":
+        # Parse JSON content
+        import json
+        data = json.loads(content)
+        datasets[dataset_id] = {
+            "id": dataset_id,
+            "name": name,
+            "examples": data.get("examples", []),
+            "template": data.get("template", ""),
+            "variables": data.get("variables", []),
+            "imported_from": file_type
+        }
+    elif file_type == "csv":
+        # Parse CSV content
+        import csv
+        import io
+        
+        reader = csv.DictReader(io.StringIO(content))
+        examples = list(reader)
+        
+        datasets[dataset_id] = {
+            "id": dataset_id,
+            "name": name,
+            "examples": examples,
+            "imported_from": file_type
+        }
+    else:
+        raise HTTPException(status_code=400, detail="Unsupported file type")
+    
+    return {"id": dataset_id, "status": "imported", "example_count": len(datasets[dataset_id]["examples"])}
+
+# Model management
+@app.post("/api/models/add")
+async def add_custom_model(model: ModelInfo):
+    """Add a custom model configuration"""
+    model_id = model.id or f"custom_{len(AVAILABLE_MODELS)}"
+    AVAILABLE_MODELS[model_id] = model
+    return {"id": model_id, "status": "added"}
 
 if __name__ == "__main__":
     import uvicorn

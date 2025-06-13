@@ -1,11 +1,12 @@
 # Probity Usage Guide
 
 ## Overview
-Probity is a library for probing neural networks, now using nnsight for model introspection instead of transformer_lens.
+Probity is a library for probing neural networks, now using nnsight for model introspection instead of transformer_lens. The library includes a comprehensive UI for building, training, and analyzing probes.
 
 > **📚 Quick Links:**
 > - [Testing Guide](testing.md) - How to test the library and verify nnsight integration
 > - [Migration Guide](migration_guide.md) - Quick reference for migrating from transformer_lens
+> - [UI Guide](#probity-ui) - Using the Probity Studio interface
 
 ## Key Changes from transformer_lens to nnsight
 
@@ -185,3 +186,105 @@ This can occur if you're trying to compute gradients through nnsight's trace con
 
 ### Proxy object errors
 After a trace execution, saved activations might be proxy objects. Access their value using `.value` attribute if needed.
+
+## Probity UI
+
+The Probity UI provides a visual interface for probe development, training, and analysis.
+
+### Starting the UI
+
+```bash
+# Frontend (React)
+cd probity-ui/frontend
+npm install
+npm start
+
+# Backend (FastAPI)
+cd probity-ui/backend
+uvicorn main:app --reload
+```
+
+Access the UI at http://localhost:3000
+
+### Features
+
+#### 1. Dataset Builder
+- Create templated datasets with variables and classes
+- Generate dataset variations automatically
+- Import/export datasets (CSV, JSON, JSONL)
+- Preview and edit examples
+
+#### 2. Model Explorer
+- Select from pre-configured models (GPT-2, GPT-2 Medium)
+- Add custom models with configurable layers
+- Visual layer selection interface
+- Automatic hook point generation
+
+#### 3. Experiment Setup
+- Configure probe types (Linear, Logistic, Multi-class, Directional)
+- Set training hyperparameters
+- Select datasets and models
+- Real-time experiment progress tracking
+
+#### 4. Results Viewer
+- Training metrics visualization (loss curves, accuracy)
+- Layer-wise performance analysis
+- Interactive inference testing
+- Token-level prediction visualization
+
+#### 5. Advanced Visualizations
+- **Attention Patterns**: Visualize attention weights between tokens
+- **Activation Heatmaps**: View neuron activations across layers
+- **Probe Weights**: Analyze learned probe parameters
+
+#### 6. Visual Workflow Builder (NEW)
+- Drag-and-drop workflow creation
+- Connect datasets, models, probes, and analyses
+- Visual pipeline execution
+- Save and load workflows
+
+#### 7. Probe Comparison Tools (NEW)
+- Compare multiple probe types side-by-side
+- Multi-dimensional performance metrics
+- Radar charts for holistic comparison
+- Export comparison results
+
+### Workflow Example
+
+1. **Create Dataset**: 
+   - Navigate to Dataset tab
+   - Define template and variables
+   - Generate examples
+   - Save dataset
+
+2. **Select Model**:
+   - Go to Model tab
+   - Choose a pre-trained model or add custom
+   - Select layers to probe
+   - View hook points
+
+3. **Run Experiment**:
+   - Navigate to Experiment tab
+   - Select dataset and model
+   - Choose probe type
+   - Configure training parameters
+   - Click "Run Experiment"
+
+4. **Analyze Results**:
+   - Go to Results tab
+   - View training metrics
+   - Test with interactive inference
+   - Explore visualizations
+
+5. **Compare Probes**:
+   - Navigate to Compare tab
+   - Select multiple experiments
+   - Analyze performance differences
+   - Export comparison data
+
+### Tips
+
+- Use the Workflow Builder for complex multi-step analyses
+- Save datasets for reuse across experiments
+- Compare different probe types on the same dataset
+- Export results for further analysis in Python

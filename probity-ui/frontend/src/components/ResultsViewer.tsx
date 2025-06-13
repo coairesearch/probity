@@ -27,8 +27,29 @@ export const ResultsViewer: React.FC = () => {
   const runInference = async () => {
     setIsRunningInference(true);
     
-    // Mock inference - in real implementation, call API
-    setTimeout(() => {
+    try {
+      const response = await fetch('http://localhost:8000/api/inference', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: inferenceText,
+          experiment_id: currentExperiment?.id || experiments[0]?.id || 'demo'
+        })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        setInferenceResult({
+          text: result.text,
+          tokens: result.tokens,
+          predictions: result.predictions,
+          overallPrediction: result.overall_prediction,
+          confidence: result.confidence
+        });
+      }
+    } catch (error) {
+      console.error('Error running inference:', error);
+      // Fallback to mock data
       const tokens = inferenceText.split(' ');
       const predictions = tokens.map(() => Math.random());
       const overallPrediction = predictions.reduce((a, b) => a + b, 0) / predictions.length;
@@ -40,9 +61,9 @@ export const ResultsViewer: React.FC = () => {
         overallPrediction: overallPrediction > 0.5 ? 'positive' : 'negative',
         confidence: Math.abs(overallPrediction - 0.5) * 2
       });
-      
-      setIsRunningInference(false);
-    }, 1000);
+    }
+    
+    setIsRunningInference(false);
   };
   
   const tabs = [

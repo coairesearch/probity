@@ -78,24 +78,44 @@ export const DatasetBuilder: React.FC = () => {
     setVariables(variables.filter((_, i) => i !== index));
   };
   
-  const saveDataset = () => {
-    const dataset = {
-      id: Date.now().toString(),
-      name: datasetName,
-      templates: [{
-        id: '1',
-        template,
-        variables
-      }],
-      examples: previewExamples.map((text, index) => ({
-        text,
-        label: index < previewExamples.length / 2 ? 1 : 0,
-        label_text: index < previewExamples.length / 2 ? 'positive' : 'negative'
-      }))
-    };
-    
-    createDataset(dataset);
-    alert('Dataset saved successfully!');
+  const saveDataset = async () => {
+    try {
+      // Save to backend
+      const response = await fetch('http://localhost:8000/api/datasets/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: datasetName,
+          template,
+          variables
+        })
+      });
+      
+      if (response.ok) {
+        const savedDataset = await response.json();
+        
+        // Add examples to the dataset
+        const datasetWithExamples = {
+          ...savedDataset,
+          templates: [{
+            id: '1',
+            template,
+            variables
+          }],
+          examples: previewExamples.map((text, index) => ({
+            text,
+            label: index < previewExamples.length / 2 ? 1 : 0,
+            label_text: index < previewExamples.length / 2 ? 'positive' : 'negative'
+          }))
+        };
+        
+        createDataset(datasetWithExamples);
+        alert('Dataset saved successfully!');
+      }
+    } catch (error) {
+      console.error('Error saving dataset:', error);
+      alert('Failed to save dataset');
+    }
   };
   
   return (

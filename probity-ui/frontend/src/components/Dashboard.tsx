@@ -1,11 +1,36 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Database, Brain, Microscope, BarChart3, Plus, ArrowRight, Eye, Trash2, Edit } from 'lucide-react';
 import { useStore } from '../store';
 
 export const Dashboard: React.FC = () => {
-  const { datasets, experiments, models, selectDataset, currentDataset, deleteDataset } = useStore();
+  const { datasets, experiments, models, selectDataset, currentDataset, deleteDataset, createDataset } = useStore();
   const [showDatasets, setShowDatasets] = useState(false);
+  const [loading, setLoading] = useState(true);
+  
+  // Fetch datasets from backend on mount
+  useEffect(() => {
+    fetchDatasets();
+  }, []);
+  
+  const fetchDatasets = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/api/datasets');
+      const data = await response.json();
+      
+      // Add datasets to store
+      data.forEach((dataset: any) => {
+        if (!datasets.find(d => d.id === dataset.id)) {
+          createDataset(dataset);
+        }
+      });
+      
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching datasets:', error);
+      setLoading(false);
+    }
+  };
   
   const cards = [
     {

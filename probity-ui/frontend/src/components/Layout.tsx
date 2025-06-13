@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Brain, Database, Microscope, BarChart3, Home } from 'lucide-react';
+import { Brain, Database, Microscope, BarChart3, Home, GitBranch, BarChart } from 'lucide-react';
 import { useStore } from '../store';
 
 interface LayoutProps {
@@ -18,6 +18,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     { name: 'Model', href: '/model', icon: Brain, view: 'model' as const },
     { name: 'Experiment', href: '/experiment', icon: Microscope, view: 'experiment' as const },
     { name: 'Results', href: '/results', icon: BarChart3, view: 'results' as const },
+    { name: 'Workflow', href: '/workflow', icon: GitBranch, view: 'experiment' as const },
+    { name: 'Compare', href: '/comparison', icon: BarChart, view: 'results' as const },
   ];
   
   return (
