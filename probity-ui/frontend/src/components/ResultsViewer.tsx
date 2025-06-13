@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Download, RefreshCw, TrendingUp, BarChart2 } from 'lucide-react';
+import { Download, RefreshCw, TrendingUp, BarChart2, Brain, Activity, Weight } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useStore } from '../store';
+import { AttentionPatternViz, ActivationHeatmap, ProbeWeightsViz } from './visualizations';
 
 export const ResultsViewer: React.FC = () => {
   const { experiments, currentExperiment } = useStore();
-  const [activeTab, setActiveTab] = useState<'training' | 'analysis' | 'inference'>('training');
+  const [activeTab, setActiveTab] = useState<'training' | 'analysis' | 'inference' | 'attention' | 'activations' | 'weights'>('training');
   
   // Mock data for visualization
   const trainingData = Array.from({ length: 10 }, (_, i) => ({
@@ -23,7 +24,10 @@ export const ResultsViewer: React.FC = () => {
   const tabs = [
     { id: 'training', name: 'Training Metrics', icon: TrendingUp },
     { id: 'analysis', name: 'Layer Analysis', icon: BarChart2 },
-    { id: 'inference', name: 'Interactive Inference', icon: RefreshCw }
+    { id: 'inference', name: 'Interactive Inference', icon: RefreshCw },
+    { id: 'attention', name: 'Attention Patterns', icon: Brain },
+    { id: 'activations', name: 'Activation Heatmap', icon: Activity },
+    { id: 'weights', name: 'Probe Weights', icon: Weight }
   ];
   
   if (!currentExperiment && experiments.length === 0) {
@@ -195,6 +199,29 @@ export const ResultsViewer: React.FC = () => {
                 </div>
               </div>
             </div>
+          )}
+
+          {/* Attention Patterns Tab */}
+          {activeTab === 'attention' && (
+            <AttentionPatternViz 
+              experimentId={currentExperiment?.id || experiments[0]?.id || 'demo'} 
+            />
+          )}
+
+          {/* Activation Heatmap Tab */}
+          {activeTab === 'activations' && (
+            <ActivationHeatmap 
+              experimentId={currentExperiment?.id || experiments[0]?.id || 'demo'}
+              normalization="layer"
+            />
+          )}
+
+          {/* Probe Weights Tab */}
+          {activeTab === 'weights' && (
+            <ProbeWeightsViz 
+              experimentId={currentExperiment?.id || experiments[0]?.id || 'demo'}
+              probeType="logistic"
+            />
           )}
         </div>
       </div>

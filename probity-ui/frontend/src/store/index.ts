@@ -18,6 +18,8 @@ export interface Dataset {
   name: string;
   templates: Template[];
   examples?: any[];
+  createdAt?: Date;
+  importedFrom?: string;
 }
 
 export interface Model {

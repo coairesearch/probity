@@ -6,6 +6,7 @@ import asyncio
 import json
 import sys
 import os
+import numpy as np
 
 # Add parent directory to path to import probity
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -224,6 +225,80 @@ async def run_inference(text: str, experiment_id: str):
         "predictions": predictions,
         "overall_prediction": "positive",
         "confidence": 0.968
+    }
+
+@app.get("/api/experiments/{experiment_id}/attention")
+async def get_attention_patterns(experiment_id: str, layer: Optional[int] = None):
+    """Get attention patterns for visualization"""
+    # Mock data - in real implementation, load from experiment results
+    tokens = ["I", "thought", "this", "movie", "was", "amazing", ",", "I", "loved", "it", "."]
+    num_layers = 12
+    num_tokens = len(tokens)
+    
+    # Generate mock attention patterns
+    attention_data = np.random.rand(num_layers, num_tokens, num_tokens)
+    # Make attention patterns more realistic (higher values on diagonal)
+    for l in range(num_layers):
+        for i in range(num_tokens):
+            attention_data[l, i, i] *= 2
+            # Normalize rows to sum to 1
+            attention_data[l, i] = attention_data[l, i] / attention_data[l, i].sum()
+    
+    if layer is not None:
+        attention_data = attention_data[layer:layer+1]
+    
+    return {
+        "tokens": tokens,
+        "layers": list(range(num_layers)) if layer is None else [layer],
+        "attention": attention_data.tolist()
+    }
+
+@app.get("/api/experiments/{experiment_id}/activations")
+async def get_activations(experiment_id: str):
+    """Get activation data for heatmap visualization"""
+    # Mock data
+    tokens = ["I", "thought", "this", "movie", "was", "amazing", ",", "I", "loved", "it", "."]
+    layers = [f"Layer {i}" for i in range(12)]
+    
+    # Generate mock activations
+    activations = np.random.randn(len(tokens), len(layers)) * 0.5
+    
+    # Calculate statistics per layer
+    statistics = {
+        "mean": activations.mean(axis=0).tolist(),
+        "std": activations.std(axis=0).tolist(),
+        "max": activations.max(axis=0).tolist(),
+        "min": activations.min(axis=0).tolist()
+    }
+    
+    return {
+        "tokens": tokens,
+        "layers": layers,
+        "activations": activations.tolist(),
+        "statistics": statistics
+    }
+
+@app.get("/api/experiments/{experiment_id}/probe-weights")
+async def get_probe_weights(experiment_id: str):
+    """Get probe weights for visualization"""
+    # Mock data
+    num_features = 768  # Hidden size for transformer models
+    
+    # Generate mock weights with some structure
+    weights = np.random.randn(num_features) * 0.1
+    # Make some features more important
+    important_indices = np.random.choice(num_features, size=50, replace=False)
+    weights[important_indices] *= 5
+    
+    # Calculate importance scores
+    importance = np.abs(weights) + np.random.rand(num_features) * 0.05
+    
+    return {
+        "features": [f"dim_{i}" for i in range(num_features)],
+        "weights": weights.tolist(),
+        "importance": importance.tolist(),
+        "layerName": "Layer 11",
+        "accuracy": 0.942
     }
 
 if __name__ == "__main__":

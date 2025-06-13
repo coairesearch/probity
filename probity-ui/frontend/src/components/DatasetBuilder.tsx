@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Plus, Trash2, Save, Eye, Download, Upload } from 'lucide-react';
 import { useStore, Variable } from '../store';
+import { DataImportExport } from './DataImportExport';
 
 export const DatasetBuilder: React.FC = () => {
   const { currentDataset, createDataset, updateDataset } = useStore();
+  const [activeTab, setActiveTab] = useState<'create' | 'import'>('create');
   const [template, setTemplate] = useState('I thought this movie was {ADJ}, I {VERB} it.');
   const [variables, setVariables] = useState<Variable[]>([
     {
@@ -92,8 +94,42 @@ export const DatasetBuilder: React.FC = () => {
   
   return (
     <div className="space-y-6">
-      <div className="bg-white shadow rounded-lg p-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">Dataset Builder</h2>
+      <div className="bg-white shadow rounded-lg">
+        <div className="border-b border-gray-200">
+          <div className="px-6 py-4">
+            <h2 className="text-2xl font-bold text-gray-900">Dataset Builder</h2>
+          </div>
+          <nav className="-mb-px flex space-x-8 px-6" aria-label="Tabs">
+            <button
+              onClick={() => setActiveTab('create')}
+              className={`
+                py-2 px-1 border-b-2 font-medium text-sm
+                ${activeTab === 'create'
+                  ? 'border-indigo-500 text-indigo-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }
+              `}
+            >
+              Create Template
+            </button>
+            <button
+              onClick={() => setActiveTab('import')}
+              className={`
+                py-2 px-1 border-b-2 font-medium text-sm
+                ${activeTab === 'import'
+                  ? 'border-indigo-500 text-indigo-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }
+              `}
+            >
+              Import/Export
+            </button>
+          </nav>
+        </div>
+
+        <div className="p-6">
+          {activeTab === 'create' ? (
+            <>
         
         {/* Dataset Name */}
         <div className="mb-6">
@@ -245,6 +281,11 @@ export const DatasetBuilder: React.FC = () => {
               </div>
             ))}
           </div>
+        </div>
+            </>
+          ) : (
+            <DataImportExport />
+          )}
         </div>
       </div>
     </div>
