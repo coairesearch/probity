@@ -174,4 +174,5 @@ This UI would make neural network probing accessible to:
 - Engineers debugging models                                                                                               
 - Anyone curious about how AI works                                                                                        
                                                                                                                            
-Would you like me to create a prototype of any specific component?   
+Would you like me to create a prototype of any specific component?  
+ 
