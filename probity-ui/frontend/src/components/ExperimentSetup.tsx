@@ -10,6 +10,7 @@ export const ExperimentSetup: React.FC = () => {
     currentDataset, 
     currentModel, 
     createExperiment,
+    updateExperiment,
     setActiveView 
   } = useStore();
   
@@ -41,21 +42,25 @@ export const ExperimentSetup: React.FC = () => {
       modelId: currentModel.id,
       hookPoints: [`transformer.h.11.output`], // TODO: Get from model explorer
       probeType,
-      status: 'running' as const,
+      status: 'idle' as const,
       progress: 0
     };
     
     createExperiment(experiment);
     
+    // Start the experiment
+    updateExperiment(experiment.id, { status: 'running' });
+    
     // Simulate experiment progress
     let progress = 0;
     const interval = setInterval(() => {
       progress += 10;
+      updateExperiment(experiment.id, { progress });
+      
       if (progress >= 100) {
         clearInterval(interval);
-        // Update experiment status
-        experiment.status = 'completed';
-        experiment.progress = 100;
+        // Update experiment status to completed
+        updateExperiment(experiment.id, { status: 'completed', progress: 100 });
       }
     }, 500);
     

@@ -80,6 +80,36 @@ The API will be available at http://localhost:8000
    - Test the probe with custom inputs
    - Export results for publication
 
+## Testing
+
+### Running Tests
+The UI includes comprehensive Playwright tests to ensure functionality:
+
+```bash
+# Install test dependencies
+npm install --save-dev @playwright/test playwright
+
+# Install browsers
+npx playwright install chromium
+
+# Run all tests
+npm test
+
+# Run specific test file
+npx playwright test tests/screenshot_test.spec.ts
+
+# View test report
+npx playwright show-report
+```
+
+### Test Coverage
+- Basic functionality tests
+- Navigation tests
+- API integration tests
+- Visual regression tests (screenshots)
+
+See `docs/test-report.md` for detailed test results.
+
 ## Development
 
 ### Project Structure
@@ -94,6 +124,12 @@ probity-ui/
 ├── backend/
 │   ├── main.py           # FastAPI server
 │   └── requirements.txt
+├── tests/                # Playwright tests
+│   ├── test_ui.spec.ts
+│   ├── basic_test.spec.ts
+│   └── screenshot_test.spec.ts
+├── docs/
+│   └── test-report.md    # Test results documentation
 └── README.md
 ```
 
@@ -102,6 +138,7 @@ probity-ui/
 2. Add API endpoint in `backend/main.py`
 3. Update store if needed in `frontend/src/store/`
 4. Add route in `frontend/src/App.tsx`
+5. Write tests in `tests/` directory
 
 ## Future Enhancements (Phases 2-4)
 
