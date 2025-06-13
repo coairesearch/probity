@@ -28,6 +28,7 @@ export interface Model {
   layers: number;
   hiddenSize: number;
   hookPoints: string[];
+  selectedLayers?: number[];
 }
 
 export interface Experiment {
@@ -49,11 +50,14 @@ interface AppState {
   createDataset: (dataset: Dataset) => void;
   updateDataset: (id: string, dataset: Partial<Dataset>) => void;
   selectDataset: (id: string) => void;
+  deleteDataset: (id: string) => void;
   
   // Models
   models: Model[];
   currentModel: Model | null;
   selectModel: (id: string) => void;
+  updateModel: (id: string, model: Partial<Model>) => void;
+  addModel: (model: Model) => void;
   
   // Experiments
   experiments: Experiment[];
@@ -109,8 +113,25 @@ export const useStore = create<AppState>((set) => ({
     currentDataset: state.datasets.find(d => d.id === id) || null
   })),
   
+  deleteDataset: (id) => set((state) => ({
+    datasets: state.datasets.filter(d => d.id !== id),
+    currentDataset: state.currentDataset?.id === id ? null : state.currentDataset
+  })),
+  
   selectModel: (id) => set((state) => ({
     currentModel: state.models.find(m => m.id === id) || null
+  })),
+  
+  updateModel: (id, updates) => set((state) => ({
+    models: state.models.map(m => m.id === id ? { ...m, ...updates } : m),
+    currentModel: state.currentModel?.id === id 
+      ? { ...state.currentModel, ...updates } 
+      : state.currentModel
+  })),
+  
+  addModel: (model) => set((state) => ({
+    models: [...state.models, model],
+    currentModel: model
   })),
   
   createExperiment: (experiment) => set((state) => ({

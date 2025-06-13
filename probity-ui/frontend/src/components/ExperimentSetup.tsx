@@ -7,8 +7,11 @@ export const ExperimentSetup: React.FC = () => {
   const navigate = useNavigate();
   const { 
     datasets, 
+    models,
     currentDataset, 
-    currentModel, 
+    currentModel,
+    selectDataset,
+    selectModel, 
     createExperiment,
     updateExperiment,
     setActiveView 
@@ -40,7 +43,9 @@ export const ExperimentSetup: React.FC = () => {
       name: experimentName,
       datasetId: currentDataset.id,
       modelId: currentModel.id,
-      hookPoints: [`transformer.h.11.output`], // TODO: Get from model explorer
+      hookPoints: currentModel.selectedLayers && currentModel.selectedLayers.length > 0
+        ? currentModel.selectedLayers.map(layer => `transformer.h.${layer}.output`)
+        : [`transformer.h.11.output`], // Default to layer 11 if none selected
       probeType,
       status: 'idle' as const,
       progress: 0
@@ -105,28 +110,52 @@ export const ExperimentSetup: React.FC = () => {
           />
         </div>
         
-        {/* Current Configuration Summary */}
+        {/* Dataset and Model Selection */}
         <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-gray-50 rounded-lg p-4">
-            <h4 className="text-sm font-medium text-gray-900 mb-2">Dataset</h4>
-            <p className="text-sm text-gray-600">
-              {currentDataset ? currentDataset.name : 'No dataset selected'}
-            </p>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Dataset
+            </label>
+            <select
+              value={currentDataset?.id || ''}
+              onChange={(e) => selectDataset(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+            >
+              <option value="">Select a dataset</option>
+              {datasets.map((dataset) => (
+                <option key={dataset.id} value={dataset.id}>
+                  {dataset.name} ({dataset.examples?.length || 0} examples)
+                </option>
+              ))}
+            </select>
             {currentDataset && (
-              <p className="text-xs text-gray-500 mt-1">
-                {currentDataset.examples?.length || 0} examples
+              <p className="mt-1 text-xs text-gray-500">
+                Template: {currentDataset.templates?.[0]?.template.substring(0, 50)}...
               </p>
             )}
           </div>
           
-          <div className="bg-gray-50 rounded-lg p-4">
-            <h4 className="text-sm font-medium text-gray-900 mb-2">Model</h4>
-            <p className="text-sm text-gray-600">
-              {currentModel ? currentModel.name : 'No model selected'}
-            </p>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Model
+            </label>
+            <select
+              value={currentModel?.id || ''}
+              onChange={(e) => selectModel(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+            >
+              <option value="">Select a model</option>
+              {models.map((model) => (
+                <option key={model.id} value={model.id}>
+                  {model.name} ({model.layers} layers)
+                </option>
+              ))}
+            </select>
             {currentModel && (
               <p className="text-xs text-gray-500 mt-1">
-                Probing layers: 11 {/* TODO: Get from selection */}
+                Selected layers: {currentModel.selectedLayers?.length 
+                  ? currentModel.selectedLayers.join(', ')
+                  : 'None (will use layer 11 by default)'}
               </p>
             )}
           </div>

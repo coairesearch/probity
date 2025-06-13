@@ -3,8 +3,12 @@ import { Brain, Layers, Info, Check } from 'lucide-react';
 import { useStore } from '../store';
 
 export const ModelExplorer: React.FC = () => {
-  const { models, currentModel, selectModel } = useStore();
-  const [selectedLayers, setSelectedLayers] = useState<number[]>([]);
+  const { models, currentModel, selectModel, updateModel, addModel } = useStore();
+  const [selectedLayers, setSelectedLayers] = useState<number[]>(currentModel?.selectedLayers || []);
+  const [showCustomModel, setShowCustomModel] = useState(false);
+  const [customModelName, setCustomModelName] = useState('');
+  const [customModelLayers, setCustomModelLayers] = useState(12);
+  const [customModelHiddenSize, setCustomModelHiddenSize] = useState(768);
   
   const handleModelSelect = (modelId: string) => {
     selectModel(modelId);
@@ -12,21 +16,31 @@ export const ModelExplorer: React.FC = () => {
   };
   
   const toggleLayer = (layer: number) => {
-    if (selectedLayers.includes(layer)) {
-      setSelectedLayers(selectedLayers.filter(l => l !== layer));
-    } else {
-      setSelectedLayers([...selectedLayers, layer]);
+    const newLayers = selectedLayers.includes(layer)
+      ? selectedLayers.filter(l => l !== layer)
+      : [...selectedLayers, layer];
+    
+    setSelectedLayers(newLayers);
+    
+    // Update the model with selected layers
+    if (currentModel) {
+      updateModel(currentModel.id, { selectedLayers: newLayers });
     }
   };
   
   const selectAllLayers = () => {
     if (currentModel) {
-      setSelectedLayers(Array.from({ length: currentModel.layers }, (_, i) => i));
+      const allLayers = Array.from({ length: currentModel.layers }, (_, i) => i);
+      setSelectedLayers(allLayers);
+      updateModel(currentModel.id, { selectedLayers: allLayers });
     }
   };
   
   const clearSelection = () => {
     setSelectedLayers([]);
+    if (currentModel) {
+      updateModel(currentModel.id, { selectedLayers: [] });
+    }
   };
   
   return (
@@ -64,7 +78,9 @@ export const ModelExplorer: React.FC = () => {
         
         {/* Add more models button */}
         <div className="text-center">
-          <button className="text-sm text-indigo-600 hover:text-indigo-500">
+          <button 
+            onClick={() => setShowCustomModel(true)}
+            className="text-sm text-indigo-600 hover:text-indigo-500">
             + Add custom model
           </button>
         </div>
@@ -160,6 +176,94 @@ ${selectedLayers.map(l => `  "transformer.h.${l}.output"`).join(',\n')}
               </div>
             </div>
           )}
+        </div>
+      )}
+      
+      {/* Custom Model Modal */}
+      {showCustomModel && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Add Custom Model</h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Model Name
+                </label>
+                <input
+                  type="text"
+                  value={customModelName}
+                  onChange={(e) => setCustomModelName(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  placeholder="e.g., My Custom GPT"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Number of Layers
+                </label>
+                <input
+                  type="number"
+                  value={customModelLayers}
+                  onChange={(e) => setCustomModelLayers(Number(e.target.value))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  min={1}
+                  max={100}
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Hidden Size
+                </label>
+                <input
+                  type="number"
+                  value={customModelHiddenSize}
+                  onChange={(e) => setCustomModelHiddenSize(Number(e.target.value))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  min={1}
+                  step={64}
+                />
+              </div>
+            </div>
+            
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowCustomModel(false);
+                  setCustomModelName('');
+                  setCustomModelLayers(12);
+                  setCustomModelHiddenSize(768);
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (customModelName.trim()) {
+                    const newModel = {
+                      id: `custom_${Date.now()}`,
+                      name: customModelName,
+                      layers: customModelLayers,
+                      hiddenSize: customModelHiddenSize,
+                      hookPoints: Array.from({ length: customModelLayers }, (_, i) => `transformer.h.${i}.output`)
+                    };
+                    addModel(newModel);
+                    setShowCustomModel(false);
+                    setCustomModelName('');
+                    setCustomModelLayers(12);
+                    setCustomModelHiddenSize(768);
+                  }
+                }}
+                disabled={!customModelName.trim()}
+                className="px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400"
+              >
+                Add Model
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

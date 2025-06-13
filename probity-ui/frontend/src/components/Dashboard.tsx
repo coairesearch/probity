@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Database, Brain, Microscope, BarChart3, Plus, ArrowRight } from 'lucide-react';
+import { Database, Brain, Microscope, BarChart3, Plus, ArrowRight, Eye, Trash2, Edit } from 'lucide-react';
 import { useStore } from '../store';
 
 export const Dashboard: React.FC = () => {
-  const { datasets, experiments, models } = useStore();
+  const { datasets, experiments, models, selectDataset, currentDataset, deleteDataset } = useStore();
+  const [showDatasets, setShowDatasets] = useState(false);
   
   const cards = [
     {
@@ -13,14 +14,15 @@ export const Dashboard: React.FC = () => {
       icon: Database,
       href: '/dataset',
       color: 'bg-blue-500',
-      stats: `${datasets.length} datasets`
+      stats: `${datasets.length} datasets`,
+      action: () => setShowDatasets(!showDatasets)
     },
     {
       title: 'Select Model',
       description: 'Choose and explore neural network architectures',
       icon: Brain,
       href: '/model',
-      color: 'bg-green-500',
+      color: 'bg-purple-500',
       stats: `${models.length} models available`
     },
     {
@@ -28,7 +30,7 @@ export const Dashboard: React.FC = () => {
       description: 'Configure and execute probing experiments',
       icon: Microscope,
       href: '/experiment',
-      color: 'bg-purple-500',
+      color: 'bg-green-500',
       stats: `${experiments.length} experiments`
     },
     {
@@ -42,110 +44,189 @@ export const Dashboard: React.FC = () => {
   ];
   
   return (
-    <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Welcome to Probity Studio</h1>
-        <p className="mt-2 text-lg text-gray-600">
-          A visual interface for neural network interpretability research
-        </p>
+    <div className="space-y-6">
+      <div className="bg-white shadow rounded-lg p-6">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Welcome to Probity Studio</h1>
+            <p className="mt-2 text-lg text-gray-600">
+              A visual interface for neural network interpretability research
+            </p>
+          </div>
+          <Link
+            to="/experiment"
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            New Experiment
+          </Link>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {cards.map((card) => (
+            <div key={card.title} className="relative">
+              <Link
+                to={card.href}
+                className="block bg-white border-2 border-gray-200 rounded-lg p-6 hover:border-gray-300 transition-colors"
+              >
+                <div className={`inline-flex p-3 rounded-lg ${card.color} text-white mb-4`}>
+                  <card.icon className="h-6 w-6" />
+                </div>
+                <h3 className="text-lg font-medium text-gray-900">{card.title}</h3>
+                <p className="mt-2 text-sm text-gray-500">{card.description}</p>
+                <div className="mt-4 flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-900">{card.stats}</span>
+                  <ArrowRight className="h-4 w-4 text-gray-400" />
+                </div>
+              </Link>
+              
+              {/* Show datasets dropdown for dataset card */}
+              {card.title === 'Create Dataset' && datasets.length > 0 && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    card.action?.();
+                  }}
+                  className="absolute top-2 right-2 p-2 text-gray-500 hover:text-gray-700"
+                >
+                  <Eye className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
       
-      {/* Quick Start Cards */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-        {cards.map((card) => (
-          <Link
-            key={card.title}
-            to={card.href}
-            className="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg transition-shadow"
-          >
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className={`flex-shrink-0 rounded-md p-3 ${card.color}`}>
-                  <card.icon className="h-6 w-6 text-white" />
+      {/* Datasets List */}
+      {showDatasets && datasets.length > 0 && (
+        <div className="bg-white shadow rounded-lg p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-gray-900">Existing Datasets</h2>
+            <button
+              onClick={() => setShowDatasets(false)}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              ✕
+            </button>
+          </div>
+          
+          <div className="space-y-3">
+            {datasets.map((dataset) => (
+              <div
+                key={dataset.id}
+                className={`p-4 border-2 rounded-lg cursor-pointer transition-colors ${
+                  currentDataset?.id === dataset.id
+                    ? 'border-indigo-500 bg-indigo-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div 
+                    className="flex-1"
+                    onClick={() => selectDataset(dataset.id)}
+                  >
+                    <h3 className="text-lg font-medium text-gray-900">{dataset.name}</h3>
+                    <div className="mt-1 text-sm text-gray-500">
+                      {dataset.examples?.length || 0} examples
+                      {dataset.createdAt && (
+                        <span className="ml-3">
+                          Created: {new Date(dataset.createdAt).toLocaleDateString()}
+                        </span>
+                      )}
+                      {dataset.importedFrom && (
+                        <span className="ml-3 text-blue-600">
+                          Imported from {dataset.importedFrom}
+                        </span>
+                      )}
+                    </div>
+                    {dataset.templates?.[0]?.template && (
+                      <div className="mt-2 text-sm font-mono text-gray-600 bg-gray-100 p-2 rounded">
+                        {dataset.templates[0].template.substring(0, 100)}...
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex items-center space-x-2 ml-4">
+                    <Link
+                      to="/dataset"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        selectDataset(dataset.id);
+                      }}
+                      className="p-2 text-gray-500 hover:text-gray-700"
+                      title="Edit dataset"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Link>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (window.confirm('Are you sure you want to delete this dataset?')) {
+                          deleteDataset?.(dataset.id);
+                        }
+                      }}
+                      className="p-2 text-red-500 hover:text-red-700"
+                      title="Delete dataset"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">
-                      {card.title}
-                    </dt>
-                    <dd className="text-lg font-semibold text-gray-900">
-                      {card.stats}
-                    </dd>
-                  </dl>
-                </div>
               </div>
-              <div className="mt-4">
-                <p className="text-sm text-gray-600">{card.description}</p>
-              </div>
-            </div>
-            <div className="bg-gray-50 px-5 py-3">
-              <div className="text-sm">
-                <span className="font-medium text-indigo-600 hover:text-indigo-500 flex items-center">
-                  Get started <ArrowRight className="ml-1 h-4 w-4" />
-                </span>
-              </div>
-            </div>
-          </Link>
-        ))}
-      </div>
+            ))}
+          </div>
+        </div>
+      )}
       
       {/* Recent Experiments */}
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
-          <h3 className="text-lg leading-6 font-medium text-gray-900">
-            Recent Experiments
-          </h3>
-        </div>
-        <div className="px-4 py-5 sm:p-6">
-          {experiments.length === 0 ? (
-            <div className="text-center py-12">
-              <Microscope className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No experiments yet</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Get started by creating a dataset and running your first experiment.
-              </p>
-              <div className="mt-6">
-                <Link
-                  to="/dataset"
-                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create Dataset
-                </Link>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {experiments.slice(0, 5).map((experiment) => (
-                <div key={experiment.id} className="flex items-center justify-between py-3 border-b border-gray-200 last:border-0">
+      <div className="bg-white shadow rounded-lg p-6">
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Recent Experiments</h2>
+        {experiments.length === 0 ? (
+          <div className="text-center py-8">
+            <Microscope className="mx-auto h-12 w-12 text-gray-400" />
+            <p className="mt-2 text-sm text-gray-500">No experiments yet</p>
+            <p className="mt-1 text-sm text-gray-500">
+              Get started by creating a dataset and running your first experiment.
+            </p>
+            <Link
+              to="/dataset"
+              className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+            >
+              Create Dataset
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {experiments.slice(0, 5).map((experiment) => (
+              <Link
+                key={experiment.id}
+                to="/results"
+                className="block p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors"
+              >
+                <div className="flex items-center justify-between">
                   <div>
-                    <h4 className="text-sm font-medium text-gray-900">{experiment.name}</h4>
+                    <h3 className="text-sm font-medium text-gray-900">{experiment.name}</h3>
                     <p className="text-sm text-gray-500">
-                      {experiment.probeType} probe on {experiment.modelId}
+                      {experiment.probeType} probe • {experiment.status}
                     </p>
                   </div>
-                  <div className="flex items-center space-x-4">
-                    <span className={`
-                      inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                      ${experiment.status === 'completed' ? 'bg-green-100 text-green-800' : 
-                        experiment.status === 'running' ? 'bg-blue-100 text-blue-800' :
-                        experiment.status === 'failed' ? 'bg-red-100 text-red-800' :
-                        'bg-gray-100 text-gray-800'}
-                    `}>
-                      {experiment.status}
-                    </span>
-                    <Link
-                      to="/results"
-                      className="text-indigo-600 hover:text-indigo-500 text-sm font-medium"
-                    >
-                      View
-                    </Link>
+                  <div className="text-right">
+                    {experiment.status === 'completed' && experiment.results && (
+                      <p className="text-sm font-medium text-green-600">
+                        {(experiment.results.final_accuracy * 100).toFixed(1)}% accuracy
+                      </p>
+                    )}
+                    {experiment.status === 'running' && (
+                      <p className="text-sm text-yellow-600">
+                        {experiment.progress}% complete
+                      </p>
+                    )}
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

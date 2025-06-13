@@ -7,6 +7,9 @@ import { AttentionPatternViz, ActivationHeatmap, ProbeWeightsViz } from './visua
 export const ResultsViewer: React.FC = () => {
   const { experiments, currentExperiment } = useStore();
   const [activeTab, setActiveTab] = useState<'training' | 'analysis' | 'inference' | 'attention' | 'activations' | 'weights'>('training');
+  const [inferenceText, setInferenceText] = useState('This movie was absolutely fantastic!');
+  const [inferenceResult, setInferenceResult] = useState<any>(null);
+  const [isRunningInference, setIsRunningInference] = useState(false);
   
   // Mock data for visualization
   const trainingData = Array.from({ length: 10 }, (_, i) => ({
@@ -20,6 +23,27 @@ export const ResultsViewer: React.FC = () => {
     layer: `Layer ${i}`,
     accuracy: 0.5 + Math.random() * 0.4
   }));
+  
+  const runInference = async () => {
+    setIsRunningInference(true);
+    
+    // Mock inference - in real implementation, call API
+    setTimeout(() => {
+      const tokens = inferenceText.split(' ');
+      const predictions = tokens.map(() => Math.random());
+      const overallPrediction = predictions.reduce((a, b) => a + b, 0) / predictions.length;
+      
+      setInferenceResult({
+        text: inferenceText,
+        tokens: tokens,
+        predictions: predictions,
+        overallPrediction: overallPrediction > 0.5 ? 'positive' : 'negative',
+        confidence: Math.abs(overallPrediction - 0.5) * 2
+      });
+      
+      setIsRunningInference(false);
+    }, 1000);
+  };
   
   const tabs = [
     { id: 'training', name: 'Training Metrics', icon: TrendingUp },
@@ -163,41 +187,64 @@ export const ResultsViewer: React.FC = () => {
               <div>
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Test Your Probe</h3>
                 <textarea
+                  value={inferenceText}
+                  onChange={(e) => setInferenceText(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                   rows={3}
                   placeholder="Enter text to analyze..."
-                  defaultValue="This movie was absolutely fantastic!"
                 />
-                <button className="mt-3 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  Run Inference
+                <button 
+                  onClick={runInference}
+                  disabled={isRunningInference || !inferenceText.trim()}
+                  className="mt-3 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400"
+                >
+                  <RefreshCw className={`mr-2 h-4 w-4 ${isRunningInference ? 'animate-spin' : ''}`} />
+                  {isRunningInference ? 'Running...' : 'Run Inference'}
                 </button>
               </div>
               
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="text-sm font-medium text-gray-900 mb-2">Prediction</h4>
-                <div className="flex items-center justify-between">
-                  <span className="text-lg font-medium text-green-600">Positive</span>
-                  <span className="text-sm text-gray-500">Confidence: 96.8%</span>
-                </div>
-                
-                <div className="mt-4">
-                  <h5 className="text-xs font-medium text-gray-700 mb-1">Token-level predictions</h5>
-                  <div className="flex flex-wrap gap-1">
-                    {['This', 'movie', 'was', 'absolutely', 'fantastic', '!'].map((token, i) => (
-                      <span
-                        key={i}
-                        className={`
-                          px-2 py-1 rounded text-xs
-                          ${i === 4 ? 'bg-green-200 text-green-800' : 'bg-gray-200 text-gray-700'}
-                        `}
-                      >
-                        {token}
-                      </span>
-                    ))}
+              {inferenceResult && (
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h4 className="text-sm font-medium text-gray-900 mb-2">Prediction</h4>
+                  <div className="flex items-center justify-between">
+                    <span className={`text-lg font-medium ${
+                      inferenceResult.overallPrediction === 'positive' ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {inferenceResult.overallPrediction.charAt(0).toUpperCase() + inferenceResult.overallPrediction.slice(1)}
+                    </span>
+                    <span className="text-sm text-gray-500">
+                      Confidence: {(inferenceResult.confidence * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                  
+                  <div className="mt-4">
+                    <h5 className="text-xs font-medium text-gray-700 mb-1">Token-level predictions</h5>
+                    <div className="flex flex-wrap gap-1">
+                      {inferenceResult.tokens.map((token: string, i: number) => {
+                        const prediction = inferenceResult.predictions[i];
+                        const isPositive = prediction > 0.5;
+                        const intensity = Math.abs(prediction - 0.5) * 2;
+                        
+                        return (
+                          <span
+                            key={i}
+                            className={`
+                              px-2 py-1 rounded text-xs
+                              ${isPositive 
+                                ? intensity > 0.5 ? 'bg-green-200 text-green-800' : 'bg-green-100 text-green-700'
+                                : intensity > 0.5 ? 'bg-red-200 text-red-800' : 'bg-red-100 text-red-700'
+                              }
+                            `}
+                            title={`Score: ${prediction.toFixed(3)}`}
+                          >
+                            {token}
+                          </span>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 
