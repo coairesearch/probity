@@ -30,7 +30,6 @@ from probity.pipeline.pipeline import ProbePipeline, ProbePipelineConfig
 
 # Third-party imports
 from transformers import AutoTokenizer
-from transformer_lens import HookedTransformer
 from neuronpedia.np_vector import NPVector
 
 # Set torch device consistently
@@ -152,7 +151,7 @@ for i in np.random.choice(
 
 # %% Configure model and probe
 model_name = "gpt2"
-hook_point = "blocks.7.hook_resid_pre"
+hook_point = "transformer.h.7.output"  # Updated to nnsight format
 
 # Set up logistic probe configuration
 probe_config = LogisticProbeConfig(
@@ -191,10 +190,8 @@ pipeline_config = ProbePipelineConfig(
 
 # %%
 # Let's make sure the position key is correct
-model = HookedTransformer.from_pretrained(model_name)
-
 example = tokenized_dataset.examples[0]
-print(f"Example text: {model.to_str_tokens(example.text, prepend_bos=False)}")
+print(f"Example text: {tokenizer.convert_ids_to_tokens(tokenizer(example.text)['input_ids'])}")
 print(f"Token positions: {example.token_positions}")
 print(f"Available position keys: {list(example.token_positions.keys())}")
 

@@ -8,7 +8,7 @@ from typing import Type
 from probity.pipeline.pipeline import ProbePipeline, ProbePipelineConfig
 from probity.collection.activation_store import ActivationStore
 from probity.datasets.tokenized import TokenizedProbingDataset
-from probity.probes.linear_probe import BaseProbe, ProbeConfig
+from probity.probes import BaseProbe, ProbeConfig
 from probity.training.trainer import BaseProbeTrainer, BaseTrainerConfig
 
 

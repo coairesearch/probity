@@ -1,45 +1,47 @@
 import torch
 from dataclasses import dataclass
 from typing import List, Dict
-from transformer_lens import HookedTransformer
+from nnsight import LanguageModel
 from probity.datasets.tokenized import TokenizedProbingDataset
 from probity.collection.activation_store import ActivationStore
 
 
 @dataclass
-class TransformerLensConfig:
-    """Configuration for TransformerLensCollector."""
+class NNsightConfig:
+    """Configuration for NNsightCollector."""
 
     model_name: str
-    hook_points: List[str]  # e.g. ["blocks.12.hook_resid_post"]
+    hook_points: List[str]  # e.g. ["transformer.h.12.output"]
     batch_size: int = 32
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
 
 
-class TransformerLensCollector:
-    """Collects activations using TransformerLens."""
+class NNsightCollector:
+    """Collects activations using NNsight."""
 
-    def __init__(self, config: TransformerLensConfig):
+    def __init__(self, config: NNsightConfig):
         self.config = config
         print(f"Initializing collector with device: {config.device}")
-        self.model = HookedTransformer.from_pretrained_no_processing(config.model_name)
-        print(f"Moving model to device: {config.device}")
-        self.model.to(config.device)
+        self.model = LanguageModel(config.model_name, device_map=config.device)
+        print(f"Model loaded on device: {config.device}")
 
     @staticmethod
     def get_layer_from_hook_point(hook_point: str) -> int:
         """Extract layer number from hook point string.
         
         Args:
-            hook_point: Hook point string (e.g. "blocks.12.hook_resid_post")
+            hook_point: Hook point string (e.g. "transformer.h.12.output")
             
         Returns:
             Layer number
         """
         try:
-            # Extract number after "blocks."
-            layer = int(hook_point.split(".")[1])
-            return layer
+            # Extract number after "h."
+            parts = hook_point.split(".")
+            for i, part in enumerate(parts):
+                if part == "h" and i + 1 < len(parts):
+                    return int(parts[i + 1])
+            raise ValueError("Layer number not found")
         except (IndexError, ValueError):
             raise ValueError(f"Could not extract layer from hook point: {hook_point}")
 
@@ -54,39 +56,38 @@ class TransformerLensCollector:
         """
         all_activations = {}
 
-        # Set model to evaluation mode
-        self.model.eval()
-
-        # Get maximum layer needed
-        max_layer = max(
-            self.get_layer_from_hook_point(hook)
-            for hook in self.config.hook_points
-        )
-
         # Process in batches
-        with torch.no_grad():  # Disable gradient computation for determinism
-            for batch_start in range(0, len(dataset.examples), self.config.batch_size):
-                batch_end = min(batch_start + self.config.batch_size, len(dataset.examples))
-                batch_indices = list(range(batch_start, batch_end))
+        for batch_start in range(0, len(dataset.examples), self.config.batch_size):
+            batch_end = min(batch_start + self.config.batch_size, len(dataset.examples))
+            batch_indices = list(range(batch_start, batch_end))
 
-                # Get batch tensors
-                batch = dataset.get_batch_tensors(batch_indices)
+            # Get batch tensors
+            batch = dataset.get_batch_tensors(batch_indices)
+            input_ids = batch["input_ids"].to(self.config.device)
 
-                # Run model with caching
-                _, cache = self.model.run_with_cache(
-                    batch["input_ids"].to(self.config.device),
-                    names_filter=self.config.hook_points,
-                    return_cache_object=True,
-                    stop_at_layer=max_layer + 1
-                )
-
-                # Store activations for each hook point
+            # Run model with tracing to collect activations
+            saved_activations = {}
+            with self.model.trace(input_ids) as tracer:
+                # Save activations for each hook point
                 for hook in self.config.hook_points:
-                    if hook not in all_activations:
-                        all_activations[hook] = []
-                    all_activations[hook].append(cache[hook].cpu())
+                    # Navigate to the hook point and save output
+                    module = self._get_module_from_hook_point(hook)
+                    saved_activations[hook] = module.save()
 
-        # Create ActivationCache objects
+            # After trace execution, we can access the actual values
+            # Store activations for each hook point
+            for hook in self.config.hook_points:
+                if hook not in all_activations:
+                    all_activations[hook] = []
+                # Get the saved value from the proxy
+                proxy = saved_activations[hook]
+                activation = proxy.value  # Access the actual tensor value
+                if isinstance(activation, tuple) and len(activation) > 0:
+                    # Take the first element if it's a tuple (hidden states)
+                    activation = activation[0]
+                all_activations[hook].append(activation.detach().cpu())
+
+        # Create ActivationStore objects
         return {
             hook: ActivationStore(
                 raw_activations=torch.cat(activations, dim=0),
@@ -100,3 +101,30 @@ class TransformerLensCollector:
             )
             for hook, activations in all_activations.items()
         }
+
+    def _get_module_from_hook_point(self, hook_point: str):
+        """Navigate to the module specified by the hook point.
+        
+        Args:
+            hook_point: Dot-separated path to module (e.g. "transformer.h.12.output")
+            
+        Returns:
+            Module reference
+        """
+        parts = hook_point.split(".")
+        module = self.model
+        
+        for part in parts:
+            if part.isdigit():
+                # Handle numeric indices for layer lists
+                module = module[int(part)]
+            else:
+                # Handle named attributes
+                module = getattr(module, part)
+        
+        return module
+
+
+# Backward compatibility aliases
+TransformerLensConfig = NNsightConfig
+TransformerLensCollector = NNsightCollector

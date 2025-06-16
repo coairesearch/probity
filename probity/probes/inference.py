@@ -1,6 +1,6 @@
 import torch
 from typing import List, Optional, Union, Any
-from transformer_lens import HookedTransformer
+from nnsight import LanguageModel
 
 from probity.probes import BaseProbe, MultiClassLogisticProbe
 
@@ -32,8 +32,7 @@ class ProbeInference:
         self.probe_class = probe.__class__.__name__
 
         # Setup model
-        self.model = HookedTransformer.from_pretrained_no_processing(model_name)
-        self.model.to(device)
+        self.model = LanguageModel(model_name, device_map=device)
 
     def get_activations(self, text: Union[str, List[str]]) -> torch.Tensor:
         """Get model activations for text input.
@@ -48,22 +47,31 @@ class ProbeInference:
         if isinstance(text, str):
             text = [text]
 
-        # Tokenize
-        # Make sure the model has a tokenizer
-        if not hasattr(self.model, "tokenizer") or self.model.tokenizer is None:
-            raise AttributeError("Model does not have a valid tokenizer.")
-
+        # Tokenize using the model's tokenizer
         tokens = self.model.tokenizer(text, return_tensors="pt", padding=True)
+        input_ids = tokens["input_ids"].to(self.device)
 
-        # Get activations
+        # Get activations using nnsight trace
         with torch.no_grad():
-            _, cache = self.model.run_with_cache(
-                tokens["input_ids"].to(self.device),
-                names_filter=[self.hook_point],
-                return_cache_object=True,
-            )
-
-        return cache[self.hook_point]
+            with self.model.trace(input_ids) as tracer:
+                # Navigate to the hook point and save the output
+                module = self._get_module_from_hook_point(self.hook_point)
+                saved_activation = module.save()
+            
+            # Extract the activation value after trace execution
+            # Handle both proxy and direct tuple cases
+            if hasattr(saved_activation, 'value'):
+                # It's a proxy, access the value
+                activation = saved_activation.value
+            else:
+                # It's already the actual value
+                activation = saved_activation
+                
+            if isinstance(activation, tuple) and len(activation) > 0:
+                # Take the first element if it's a tuple (hidden states)
+                activation = activation[0]
+                
+        return activation
 
     def __call__(self, text: Union[str, List[str]]) -> torch.Tensor:
         """
@@ -235,3 +243,25 @@ class ProbeInference:
                 probe = probe_class.load(probe_path)
 
         return cls(model_name, hook_point, probe, device=device)
+
+    def _get_module_from_hook_point(self, hook_point: str):
+        """Navigate to the module specified by the hook point.
+        
+        Args:
+            hook_point: Dot-separated path to module (e.g. "transformer.h.12.output")
+            
+        Returns:
+            Module reference
+        """
+        parts = hook_point.split(".")
+        module = self.model
+        
+        for part in parts:
+            if part.isdigit():
+                # Handle numeric indices for layer lists
+                module = module[int(part)]
+            else:
+                # Handle named attributes
+                module = getattr(module, part)
+        
+        return module

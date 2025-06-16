@@ -8,7 +8,7 @@ from typing import Dict, List
 from probity.datasets.templated import TemplatedDataset
 from probity.datasets.tokenized import TokenizedProbingDataset
 from transformers import AutoTokenizer
-from probity.probes.linear_probe import LogisticProbe, LogisticProbeConfig
+from probity.probes import LogisticProbe, LogisticProbeConfig
 from probity.training.trainer import SupervisedProbeTrainer, SupervisedTrainerConfig
 from probity.probes.inference import ProbeInference
 
@@ -50,7 +50,7 @@ def create_movie_dataset():
 
     # Convert to probing dataset
     probing_dataset = movie_dataset.to_probing_dataset(
-        label_from_metadata="sentiment",
+        label_from_attributes="sentiment",
         label_map={"positive": 1, "negative": 0},
         auto_add_positions=True
     )
@@ -68,7 +68,7 @@ def create_movie_dataset():
     
     return tokenized_dataset
 
-def train_probe(dataset, model_name="gpt2", hook_point="blocks.7.hook_resid_pre", device="cpu"):
+def train_probe(dataset, model_name="gpt2", hook_point="transformer.h.7.output", device="cpu"):
     """Train a logistic probe on the dataset."""
     from probity.pipeline.pipeline import ProbePipeline, ProbePipelineConfig
     
@@ -118,7 +118,7 @@ def compare_probes(original_probe, loaded_probe, test_examples, device="cpu"):
     """Compare two probes to check if they produce the same outputs."""
     
     model_name = "gpt2"
-    hook_point = "blocks.7.hook_resid_pre"
+    hook_point = "transformer.h.7.output"
     
     # Create inference objects
     original_inference = ProbeInference(
@@ -501,7 +501,7 @@ def test_inference_standardization():
         # Create inference object with loaded probe
         inference = ProbeInference.from_saved_probe(
             model_name="gpt2",
-            hook_point="blocks.7.hook_resid_pre",
+            hook_point="transformer.h.7.output",
             probe_path=str(probe_path),
             device=device
         )
@@ -553,7 +553,7 @@ def investigate_inference_pipeline():
     # Create an inference object
     inference = ProbeInference(
         model_name="gpt2",
-        hook_point="blocks.7.hook_resid_pre",
+        hook_point="transformer.h.7.output",
         probe=probe,
         device=device
     )

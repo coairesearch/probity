@@ -140,7 +140,7 @@ tokenized_dataset = TokenizedProbingDataset.from_probing_dataset(
 # %%
 # Common configuration
 model_name = "gpt2"
-hook_point = "blocks.7.hook_resid_pre"
+hook_point = "transformer.h.7.output"  # Updated to nnsight format
 hidden_size = 768  # GPT-2's hidden size
 
 # Common trainer configuration for supervised probes
